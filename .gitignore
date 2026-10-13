@@ -5,3 +5,10 @@ __pycache__/
 .pytest_cache/
 .idea/
 .vscode/
+test_images*
+test_labels*
+train_images*
+train_labels*
+val_images*
+val_labels*
+images_labels*
