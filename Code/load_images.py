@@ -1,59 +1,172 @@
+
 import cv2
-from glob import glob
 import numpy as np
-import random
-from sklearn.utils import shuffle
 import pickle
 import os
 
-def pickle_images_labels():
-	images_labels = []
-	images = glob("gestures/*/*.jpg")
-	images.sort()
-	for image in images:
-		print(image)
-		label = image[image.find(os.sep)+1: image.rfind(os.sep)]
-		img = cv2.imread(image, 0)
-		images_labels.append((np.array(img, dtype=np.uint8), int(label)))
-	return images_labels
+from glob import glob
+from collections import Counter
+from sklearn.model_selection import train_test_split
 
-images_labels = pickle_images_labels()
-images_labels = shuffle(shuffle(shuffle(shuffle(images_labels))))
-images, labels = zip(*images_labels)
-print("Length of images_labels", len(images_labels))
 
-train_images = images[:int(5/6*len(images))]
-print("Length of train_images", len(train_images))
-with open("train_images", "wb") as f:
-	pickle.dump(train_images, f)
-del train_images
+IMAGE_SIZE = 50
+RANDOM_STATE = 42
 
-train_labels = labels[:int(5/6*len(labels))]
-print("Length of train_labels", len(train_labels))
-with open("train_labels", "wb") as f:
-	pickle.dump(train_labels, f)
-del train_labels
 
-test_images = images[int(5/6*len(images)):int(11/12*len(images))]
-print("Length of test_images", len(test_images))
-with open("test_images", "wb") as f:
-	pickle.dump(test_images, f)
-del test_images
+def load_images():
 
-test_labels = labels[int(5/6*len(labels)):int(11/12*len(images))]
-print("Length of test_labels", len(test_labels))
-with open("test_labels", "wb") as f:
-	pickle.dump(test_labels, f)
-del test_labels
+    images_labels = []
 
-val_images = images[int(11/12*len(images)):]
-print("Length of test_images", len(val_images))
-with open("val_images", "wb") as f:
-	pickle.dump(val_images, f)
-del val_images
+    image_paths = sorted(glob("gestures/*/*.jpg"))
 
-val_labels = labels[int(11/12*len(labels)):]
-print("Length of val_labels", len(val_labels))
-with open("val_labels", "wb") as f:
-	pickle.dump(val_labels, f)
-del val_labels
+    if not image_paths:
+        raise ValueError("No gesture images found inside gestures/.")
+
+    print("Loading gesture images...")
+
+    invalid_images = []
+
+    for image_path in image_paths:
+
+        folder_name = os.path.basename(
+            os.path.dirname(image_path)
+        )
+
+        if not folder_name.isdigit():
+            print("Skipping invalid folder:", folder_name)
+            continue
+
+        label = int(folder_name)
+
+        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+        if img is None:
+            invalid_images.append(image_path)
+            continue
+
+        if img.shape != (IMAGE_SIZE, IMAGE_SIZE):
+            print("Incorrect image size:", image_path)
+            img = cv2.resize(img, (IMAGE_SIZE, IMAGE_SIZE))
+
+        images_labels.append(
+            (img.astype(np.uint8), label)
+        )
+
+    if not images_labels:
+        raise ValueError("No valid gesture images could be loaded.")
+
+    if invalid_images:
+        print("\nInvalid images skipped:", len(invalid_images))
+
+    return images_labels
+
+
+def save_pickle(filename, data):
+
+    with open(filename, "wb") as file:
+        pickle.dump(data, file)
+
+    print("Saved:", filename)
+
+
+def split_dataset(images, labels):
+
+    # First split: 5/6 training and 1/6 temporary
+    train_images, temp_images, train_labels, temp_labels = (
+        train_test_split(
+            images,
+            labels,
+            test_size=1/6,
+            random_state=RANDOM_STATE,
+            stratify=labels
+        )
+    )
+
+    # Second split: divide temporary data equally
+    test_images, val_images, test_labels, val_labels = (
+        train_test_split(
+            temp_images,
+            temp_labels,
+            test_size=0.5,
+            random_state=RANDOM_STATE,
+            stratify=temp_labels
+        )
+    )
+
+    return (
+        train_images,
+        train_labels,
+        test_images,
+        test_labels,
+        val_images,
+        val_labels
+    )
+
+
+def main():
+
+    images_labels = load_images()
+
+    print("\nTotal images loaded:", len(images_labels))
+
+    images = [item[0] for item in images_labels]
+    labels = [item[1] for item in images_labels]
+
+    # Display class distribution
+    class_counts = Counter(labels)
+
+    print("\nDataset class distribution:")
+
+    for class_id in sorted(class_counts):
+        print(
+            "Class ID:",
+            class_id,
+            "| Images:",
+            class_counts[class_id]
+        )
+
+    # Check minimum samples for stratified splitting
+    for class_id, count in class_counts.items():
+
+        if count < 6:
+            raise ValueError(
+                f"Class {class_id} has only {count} images. "
+                "At least 6 images per class are needed "
+                "for this stratified split."
+            )
+
+    (
+        train_images,
+        train_labels,
+        test_images,
+        test_labels,
+        val_images,
+        val_labels
+    ) = split_dataset(images, labels)
+
+    print("\nDataset split completed.")
+
+    print("Training images:", len(train_images))
+    print("Training labels:", len(train_labels))
+
+    print("Testing images:", len(test_images))
+    print("Testing labels:", len(test_labels))
+
+    print("Validation images:", len(val_images))
+    print("Validation labels:", len(val_labels))
+
+    # Save using the original filenames
+    save_pickle("train_images", tuple(train_images))
+    save_pickle("train_labels", tuple(train_labels))
+
+    save_pickle("test_images", tuple(test_images))
+    save_pickle("test_labels", tuple(test_labels))
+
+    save_pickle("val_images", tuple(val_images))
+    save_pickle("val_labels", tuple(val_labels))
+
+    print("\nAll dataset files saved successfully.")
+
+
+if __name__ == "__main__":
+    main()
