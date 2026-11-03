@@ -1,0 +1,29 @@
+{
+    "db_id_to_model_index": {
+        "0": 0,
+        "1": 1,
+        "2": 2,
+        "3": 3,
+        "36": 4,
+        "41": 5,
+        "44": 6
+    },
+    "model_index_to_db_id": [
+        0,
+        1,
+        2,
+        3,
+        36,
+        41,
+        44
+    ],
+    "class_names": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "Best of Luck",
+        "Love",
+        "Victory"
+    ]
+}

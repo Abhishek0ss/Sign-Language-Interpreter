@@ -1,13 +1,20 @@
 
 import os
+def count_gesture_images():
 
-for folder in sorted(os.listdir("gestures")):
-    path = os.path.join("gestures", folder)
+    for folder in sorted(os.listdir("gestures")):
 
-    if os.path.isdir(path):
-        images = [
-            f for f in os.listdir(path)
-            if f.lower().endswith((".jpg", ".jpeg", ".png"))
-        ]
+        folder_path = os.path.join("gestures", folder)
 
-        print(f"Class {folder}: {len(images)} images")
+        if os.path.isdir(folder_path):
+
+            images = [
+                file for file in os.listdir(folder_path)
+                if file.lower().endswith((".jpg", ".jpeg", ".png"))
+            ]
+
+            print(f"Class {folder}: {len(images)} images")
+
+
+if __name__ == "__main__":
+    count_gesture_images()

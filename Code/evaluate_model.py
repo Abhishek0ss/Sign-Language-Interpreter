@@ -14,23 +14,25 @@ from sklearn.metrics import (
 )
 
 
+# Image settings
 IMAGE_SIZE = 50
+MODEL_PATH = "cnn_model_4classes.h5"
 
 
+# Load dataset files
 def load_pickle(filename):
 
-    with open(filename, "rb") as f:
-        return pickle.load(f)
+    with open(filename, "rb") as file:
+        return pickle.load(file)
 
 
+# Get gesture names from database
 def get_class_names(num_classes):
 
     conn = sqlite3.connect("gesture_db.db")
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT g_id, g_name FROM gesture ORDER BY g_id"
-    )
+    cursor.execute("SELECT g_id, g_name FROM gesture ORDER BY g_id")
 
     rows = cursor.fetchall()
     conn.close()
@@ -39,77 +41,62 @@ def get_class_names(num_classes):
 
     for class_id in range(num_classes):
 
-        matching = [
+        matching_names = [
             name for g_id, name in rows
             if g_id == class_id
         ]
 
-        if not matching:
-            raise ValueError(
-                f"Missing database name for class ID {class_id}"
-            )
+        if not matching_names:
+            raise ValueError(f"Missing gesture name for class ID {class_id}")
 
-        class_names.append(matching[0].strip())
+        class_names.append(matching_names[0].strip())
 
     return class_names
 
 
+# Main evaluation function
 def main():
 
-    test_images = np.asarray(
-        load_pickle("test_images")
-    )
-
-    test_labels = np.asarray(
-        load_pickle("test_labels"),
-        dtype=np.int32
-    )
+    # Load test dataset
+    test_images = np.asarray(load_pickle("test_images"))
+    test_labels = np.asarray(load_pickle("test_labels"), dtype=np.int32)
 
     if len(test_images) != len(test_labels):
         raise ValueError("Test image and label counts differ.")
 
+    # Normalize and reshape images
     test_images = test_images.astype("float32") / 255.0
+    test_images = np.expand_dims(test_images, axis=-1)
 
-    test_images = np.expand_dims(
-        test_images,
-        axis=-1
-    )
+    # Check and load trained model
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
 
-    model_path = "cnn_model_4classes.h5"
-
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(
-            f"Model not found: {model_path}"
-        )
-
-    model = tf.keras.models.load_model(model_path)
+    model = tf.keras.models.load_model(MODEL_PATH)
 
     num_classes = model.output_shape[-1]
 
+    # Get gesture class names
     class_names = get_class_names(num_classes)
+
+    if len(test_labels) == 0:
+        raise ValueError("Test dataset is empty.")
 
     if np.min(test_labels) < 0 or np.max(test_labels) >= num_classes:
         raise ValueError("Test labels do not match model outputs.")
 
+    # Predict gesture classes
     predictions = model.predict(test_images, verbose=1)
+    predicted_labels = np.argmax(predictions, axis=1)
 
-    predicted_labels = np.argmax(
-        predictions,
-        axis=1
-    )
-
-    accuracy = accuracy_score(
-        test_labels,
-        predicted_labels
-    )
+    # Calculate accuracy
+    accuracy = accuracy_score(test_labels, predicted_labels)
 
     print("\nMODEL EVALUATION RESULTS")
     print("------------------------")
-
     print(f"Accuracy: {accuracy * 100:.2f}%")
 
-    print("\nCLASSIFICATION REPORT")
-
+    # Generate classification report
     report = classification_report(
         test_labels,
         predicted_labels,
@@ -118,11 +105,14 @@ def main():
         zero_division=0
     )
 
+    print("\nCLASSIFICATION REPORT")
     print(report)
 
-    with open("classification_report.txt", "w") as f:
-        f.write(report)
+    # Save classification report
+    with open("classification_report.txt", "w") as file:
+        file.write(report)
 
+    # Generate confusion matrix
     matrix = confusion_matrix(
         test_labels,
         predicted_labels,
@@ -132,6 +122,7 @@ def main():
     print("\nCONFUSION MATRIX")
     print(matrix)
 
+    # Save confusion matrix as CSV
     np.savetxt(
         "confusion_matrix.csv",
         matrix,
@@ -139,6 +130,7 @@ def main():
         fmt="%d"
     )
 
+    # Display confusion matrix
     display = ConfusionMatrixDisplay(
         confusion_matrix=matrix,
         display_labels=class_names
@@ -156,10 +148,8 @@ def main():
     plt.title("Sign Language Gesture Recognition")
     plt.tight_layout()
 
-    plt.savefig(
-        "confusion_matrix.png",
-        dpi=300
-    )
+    # Save confusion matrix graph
+    plt.savefig("confusion_matrix.png", dpi=300)
 
     plt.show()
 

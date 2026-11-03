@@ -1,28 +1,101 @@
 # Sign Language Interpreter Using Deep Learning
 
-A real-time sign language recognition application built using Python, OpenCV, TensorFlow/Keras, and Tkinter. The system uses a trained Convolutional Neural Network (CNN) to recognize hand gestures from a webcam and convert recognized gestures into text and speech.
+A real-time Sign Language Interpreter built using Python, OpenCV, and Convolutional Neural Networks (CNN). The system uses a webcam to detect hand gestures, recognize predefined signs, convert them into text, and provide speech output.
+
+The project aims to make communication easier between people who use sign language and those who do not understand it.
 
 ## Features
 
-- **Real-Time Hand Tracking:** Captures live video using a webcam.
-- **Hand Segmentation:** Uses histogram back-projection and thresholding to separate the hand from the background.
-- **Gesture Recognition:** Uses a trained CNN model to classify hand gestures.
-- **Black-and-White Threshold View:** Displays the segmented hand mask for visual feedback.
-- **Text Generation:** Adds recognized letters to a text area.
-- **Text-to-Speech:** Reads recognized text aloud using Windows PowerShell speech synthesis.
-- **Text Controls:** Supports adding spaces, deleting characters, clearing text, and speaking the generated text.
-- **Graphical User Interface:** Provides a Tkinter-based interface for camera preview and gesture recognition.
+- Real-time hand gesture detection using a webcam.
+- Hand segmentation using HSV histogram backprojection.
+- Gesture classification using a Convolutional Neural Network (CNN).
+- Recognition of seven trained gesture classes.
+- Conversion of recognized gestures into text.
+- Text-to-speech output.
+- Stable prediction using a sliding prediction history.
+- Keyboard controls for text editing and speech output.
+
+## Supported Gestures
+
+The current trained model recognizes the following classes:
+
+| Gesture | Database ID |
+|---|---:|
+| A | 0 |
+| B | 1 |
+| C | 2 |
+| D | 3 |
+| Best of Luck | 36 |
+| Love | 41 |
+| Victory | 44 |
+
+**Note:** The current model classifies static gesture images. Recognition of multi-sign phrases and dynamic gestures requires sequence-based recognition.
 
 ## Technologies Used
 
-- Python
-- TensorFlow and Keras
-- OpenCV
-- NumPy
-- Pillow
-- Tkinter
-- SQLite
-- PowerShell System.Speech
+- **Programming Language:** Python 3.11
+- **Deep Learning:** TensorFlow / Keras
+- **Computer Vision:** OpenCV
+- **Numerical Processing:** NumPy
+- **Data Processing:** Pandas
+- **Data Visualization:** Matplotlib
+- **Database:** SQLite
+- **Speech Output:** Windows PowerShell System.Speech
+
+## CNN Architecture
+
+The project uses a Sequential CNN architecture for gesture classification.
+
+| Layer | Configuration |
+|---|---|
+| Input | 50 × 50 × 1 |
+| Conv2D | 16 filters, 2 × 2 |
+| MaxPooling2D | 2 × 2 |
+| Conv2D | 32 filters, 3 × 3 |
+| MaxPooling2D | 3 × 3 |
+| Conv2D | 64 filters, 5 × 5 |
+| MaxPooling2D | 5 × 5 |
+| Flatten | Feature extraction |
+| Dense | 128 neurons, ReLU |
+| Dropout | 0.2 |
+| Output | 7 neurons, Softmax |
+
+**Training configuration:**
+
+- Epochs: 15
+- Batch size: 64
+- Optimizer: Adam
+- Learning rate: 0.001
+- Loss function: Categorical Crossentropy
+
+## Dataset
+
+The dataset contains 8,400 gesture images distributed across seven classes.
+
+Each class contains 1,200 images.
+
+| Dataset | Images |
+|---|---:|
+| Training | 7,000 |
+| Validation | 700 |
+| Testing | 700 |
+| **Total** | **8,400** |
+
+Images are converted into grayscale and resized to 50 × 50 pixels before being passed to the CNN.
+
+## Model Performance
+
+The current training run produced the following results:
+
+| Metric | Result |
+|---|---:|
+| Training Accuracy (final epoch) | 99.76% |
+| Best Validation Accuracy | 98.00% |
+| Test Accuracy | 98.00% |
+| Test Loss | 0.1007 |
+| Total Parameters | 65,207 |
+
+**Evaluation note:** These results are from a random image-level dataset split. Similar frames from the same recording session may appear in different subsets. Therefore, the reported accuracy does not establish generalization to unseen people, environments, or recording sessions.
 
 ## Project Structure
 
@@ -31,142 +104,173 @@ Sign-Language-Interpreter-using-Deep-Learning/
 │
 ├── Code/
 │   ├── gestures/
-│   ├── gui_app.py
-│   ├── final.py
-│   ├── cnn_model_train.py
+│   │   ├── 0/
+│   │   ├── 1/
+│   │   ├── 2/
+│   │   ├── 3/
+│   │   ├── 36/
+│   │   ├── 41/
+│   │   └── 44/
+│   │
 │   ├── create_gestures.py
-│   ├── display_gestures.py
-│   ├── evaluate_model.py
 │   ├── load_images.py
+│   ├── cnn_model_train.py
+│   ├── evaluate_model.py
+│   ├── final.py
 │   ├── set_hand_histogram.py
-│   ├── Rotate_images.py
-│   ├── cnn_model_keras2.h5
 │   ├── gesture_db.db
 │   ├── hist
-│   ├── Install_Packages.txt
-│   └── Install_Packages_gpu.txt
+│   ├── class_mapping.json
+│   └── cnn_model_7classes.h5
 │
-├── .gitignore
+├── README.md
 ├── LICENSE
-└── README.md
+└── .gitignore
 ```
 
-Additional training data files may be present in the `Code` directory.
+Additional generated files include training history, accuracy graphs, loss graphs, and dataset pickle files.
 
-## Requirements
-
-- Python 3.11 (the project was tested with Python 3.11.4)
-- A working webcam
-- Windows for the included PowerShell text-to-speech feature
-- Git, if you want to clone the repository
-
-## Installation
+## Installation and Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
-cd YOUR-REPOSITORY
+git clone https://github.com/YOUR_USERNAME/Sign-Language-Interpreter-using-Deep-Learning.git
 ```
 
-Replace the example URL with your actual GitHub repository URL.
+### 2. Navigate to the project directory
 
-### 2. Create a virtual environment
+```bash
+cd Sign-Language-Interpreter-using-Deep-Learning
+cd Code
+```
+
+### 3. Create a virtual environment
 
 ```bash
 python -m venv venv
 ```
 
-Activate it in Windows Command Prompt:
+### 4. Activate the virtual environment
 
-```bat
-venv\Scripts\activate.bat
-```
-
-Or in PowerShell, if script execution is permitted:
+For Windows PowerShell:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
 ```
 
-### 3. Install dependencies
+If PowerShell blocks script execution, use Command Prompt:
 
-Move into the project code directory:
-
-```bash
-cd Code
+```cmd
+venv\Scripts\activate.bat
 ```
 
-Install the required packages:
+### 5. Install dependencies
 
 ```bash
-pip install numpy opencv-python tensorflow pillow scikit-learn h5py
+python -m pip install tensorflow opencv-python numpy pandas matplotlib
 ```
 
-If you use a different Python or TensorFlow version, package compatibility may vary.
+## Running the Project
 
-## Running the Application
+Run the following scripts from the `Code` directory.
 
-From inside the `Code` directory, run:
+### Step 1: Set up hand histogram
 
 ```bash
-python gui_app.py
+python set_hand_histogram.py
 ```
 
-The application opens a graphical interface with a live webcam preview, a black-and-white threshold view, the current gesture, and the recognized text.
+This captures the hand color histogram used for segmentation.
 
-Keep your hand inside the green rectangle displayed in the camera preview.
+### Step 2: Collect gesture images
 
-To run the original recognition script instead, use:
+```bash
+python create_gestures.py
+```
+
+Enter the gesture ID and gesture name when prompted. The script captures and stores gesture images.
+
+### Step 3: Load and split the dataset
+
+```bash
+python load_images.py
+```
+
+This loads the gesture images, preprocesses them, and creates training, validation, and testing datasets.
+
+### Step 4: Train the CNN model
+
+```bash
+python cnn_model_train.py
+```
+
+The model is trained and saved as:
+
+```text
+cnn_model_7classes.h5
+```
+
+The training process also generates accuracy and loss graphs.
+
+### Step 5: Run real-time sign language recognition
 
 ```bash
 python final.py
 ```
 
-## Keyboard Shortcuts
+Make sure the trained model, `class_mapping.json`, `hist`, and `gesture_db.db` are available in the working directory.
 
-| Key | Action |
+## Keyboard Controls
+
+| Key | Function |
 |---|---|
-| `S` | Add a space |
-| `B` | Delete the last character |
-| `C` | Clear the recognized text |
-| `V` | Speak the recognized text |
-| `Q` | Quit the application |
-
-The GUI also provides buttons for these actions.
+| S | Insert a space |
+| B | Delete the last character |
+| C | Clear recognized text |
+| V | Convert recognized text into speech |
+| Q | Exit the application |
 
 ## How It Works
 
-1. The webcam captures a video frame.
-2. OpenCV converts the frame to HSV color space.
-3. Histogram back-projection helps segment the hand from the background.
-4. Gaussian blur, median blur, and Otsu thresholding produce a black-and-white mask.
-5. The largest suitable hand contour is extracted and resized to match the CNN input dimensions.
-6. The trained CNN predicts the gesture class.
-7. Stable predictions are added to the recognized text.
-8. The text-to-speech function reads the generated text aloud when requested.
+1. The webcam captures the user's hand gestures.
+2. OpenCV processes the frames and segments the hand using histogram backprojection.
+3. The detected hand region is extracted and resized to 50 × 50 pixels.
+4. The CNN predicts the gesture class.
+5. A confidence threshold and prediction history help stabilize recognition.
+6. The predicted class is mapped to its corresponding database gesture ID.
+7. The recognized gesture is displayed as text.
+8. The text can be converted into speech using the system's speech synthesizer.
 
-## Current Limitations
+## Limitations
 
-- The current trained model is configured for the gestures **A, B, C, and D**.
-- Recognition quality depends on lighting, background conditions, hand positioning, and the quality of the segmentation mask.
-- The model must be trained with additional gesture classes to support a larger alphabet or complete sign language.
-- The included speech function uses Windows PowerShell and may require adaptation for other operating systems.
-- This is a prototype and is not a complete sign language translation system.
+- The current model recognizes only the seven trained classes.
+- Recognition performance depends on lighting, background, camera quality, and hand positioning.
+- The model is trained for static gesture images.
+- Dynamic signs and complete multi-sign phrases require a sequence-based deep learning model.
+- The current evaluation uses a random image-level split and requires further testing with unseen signers and recording sessions.
+- Speech output currently uses Windows PowerShell System.Speech.
 
-## Future Improvements
+## Future Enhancements
 
-- Expand the dataset to include all alphabet gestures.
-- Improve hand segmentation under different lighting conditions.
-- Add support for dynamic gestures and complete words.
-- Improve recognition accuracy with additional training data.
-- Support more languages and text-to-speech engines.
-- Add evaluation metrics and more comprehensive testing.
+- Expand the dataset to cover more Indian Sign Language (ISL) signs.
+- Implement dynamic gesture recognition using LSTM or other sequence-based models.
+- Improve recognition across different users and lighting conditions.
+- Add sentence-level sign recognition.
+- Improve text-to-speech support and multilingual output.
+- Evaluate performance using independent signers and recording sessions.
+
+## Contribution
+
+Contributions, suggestions, and improvements are welcome.
+
+If you would like to contribute:
+
+1. Fork the repository.
+2. Create a new branch.
+3. Make your changes.
+4. Submit a pull request.
 
 ## License
 
-See the [LICENSE](LICENSE) file for the applicable license terms.
-
-## Acknowledgements
-
-This project builds on an existing deep-learning sign language interpreter project and has been adapted and tested as part of a learning project. Refer to the original repository and its license when documenting or redistributing the original work.
+This project is intended for educational and research purposes. Please refer to the repository's LICENSE file for licensing information.
