@@ -1,7 +1,6 @@
 
 import os
 import pickle
-import sqlite3
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -14,105 +13,202 @@ from sklearn.metrics import (
 )
 
 
-# Image settings
+# -----------------------------
+# 1. SETTINGS
+# -----------------------------
+
+MODEL_PATH = "cnn_model_7classes.h5"
+
+TEST_IMAGES_PATH = "test_images"
+TEST_LABELS_PATH = "test_labels"
+
 IMAGE_SIZE = 50
-MODEL_PATH = "cnn_model_4classes.h5"
+
+# CNN output order
+CLASS_NAMES = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Best of Luck",
+    "Love",
+    "Victory"
+]
+
+# Original database IDs to CNN output indices
+ID_MAPPING = {
+    0: 0,
+    1: 1,
+    2: 2,
+    3: 3,
+    36: 4,
+    41: 5,
+    44: 6
+}
 
 
-# Load dataset files
+# -----------------------------
+# 2. LOAD PICKLE FILES
+# -----------------------------
+
 def load_pickle(filename):
 
     with open(filename, "rb") as file:
         return pickle.load(file)
 
 
-# Get gesture names from database
-def get_class_names(num_classes):
+# -----------------------------
+# 3. CONVERT TEST LABELS
+# -----------------------------
 
-    conn = sqlite3.connect("gesture_db.db")
-    cursor = conn.cursor()
+def convert_labels(labels, num_classes):
 
-    cursor.execute("SELECT g_id, g_name FROM gesture ORDER BY g_id")
+    labels = np.asarray(labels)
 
-    rows = cursor.fetchall()
-    conn.close()
+    # Handle one-hot encoded labels
+    if labels.ndim == 2:
 
-    class_names = []
+        if labels.shape[1] != num_classes:
+            raise ValueError(
+                "One-hot labels do not match model outputs."
+            )
 
-    for class_id in range(num_classes):
+        labels = np.argmax(labels, axis=1)
 
-        matching_names = [
-            name for g_id, name in rows
-            if g_id == class_id
-        ]
+    # Handle integer labels
+    elif labels.ndim == 1:
 
-        if not matching_names:
-            raise ValueError(f"Missing gesture name for class ID {class_id}")
+        unique_labels = set(labels.tolist())
 
-        class_names.append(matching_names[0].strip())
+        # Convert database IDs if present
+        if unique_labels.issubset(set(ID_MAPPING.keys())):
 
-    return class_names
+            # Only remap if labels contain non-contiguous IDs
+            if any(label not in range(num_classes)
+                   for label in unique_labels):
+
+                labels = np.array([
+                    ID_MAPPING[int(label)]
+                    for label in labels
+                ])
+
+    else:
+        raise ValueError("Unexpected test label format.")
+
+    # Final validation
+    if np.any(labels < 0) or np.any(labels >= num_classes):
+        raise ValueError(
+            "Test labels do not match model output classes."
+        )
+
+    return labels.astype(int)
 
 
-# Main evaluation function
+# -----------------------------
+# 4. MAIN EVALUATION
+# -----------------------------
+
 def main():
 
-    # Load test dataset
-    test_images = np.asarray(load_pickle("test_images"))
-    test_labels = np.asarray(load_pickle("test_labels"), dtype=np.int32)
+    # Load test data
+    test_images = np.asarray(
+        load_pickle(TEST_IMAGES_PATH)
+    )
 
-    if len(test_images) != len(test_labels):
-        raise ValueError("Test image and label counts differ.")
+    test_labels = np.asarray(
+        load_pickle(TEST_LABELS_PATH)
+    )
 
-    # Normalize and reshape images
-    test_images = test_images.astype("float32") / 255.0
-    test_images = np.expand_dims(test_images, axis=-1)
+    print("Test images:", test_images.shape)
+    print("Original test labels:", test_labels.shape)
 
-    # Check and load trained model
+    # Load trained model
     if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
+        raise FileNotFoundError(
+            f"Model not found: {MODEL_PATH}"
+        )
 
-    model = tf.keras.models.load_model(MODEL_PATH)
+    model = tf.keras.models.load_model(
+        MODEL_PATH,
+        compile=False
+    )
 
     num_classes = model.output_shape[-1]
 
-    # Get gesture class names
-    class_names = get_class_names(num_classes)
+    if num_classes != len(CLASS_NAMES):
+        raise ValueError(
+            "The model does not have seven output classes."
+        )
 
-    if len(test_labels) == 0:
-        raise ValueError("Test dataset is empty.")
+    # Convert test labels
+    test_labels = convert_labels(
+        test_labels,
+        num_classes
+    )
 
-    if np.min(test_labels) < 0 or np.max(test_labels) >= num_classes:
-        raise ValueError("Test labels do not match model outputs.")
+    # Prepare images
+    test_images = test_images.astype("float32") / 255.0
 
-    # Predict gesture classes
-    predictions = model.predict(test_images, verbose=1)
-    predicted_labels = np.argmax(predictions, axis=1)
+    if test_images.ndim == 3:
+        test_images = np.expand_dims(
+            test_images, axis=-1
+        )
+
+    if test_images.shape[1:] != (IMAGE_SIZE, IMAGE_SIZE, 1):
+        raise ValueError(
+            "Test images must have shape (N, 50, 50, 1)."
+        )
+
+    if len(test_images) != len(test_labels):
+        raise ValueError(
+            "Test image and label counts differ."
+        )
+
+    # Predict
+    predictions = model.predict(
+        test_images,
+        verbose=1
+    )
+
+    predicted_labels = np.argmax(
+        predictions,
+        axis=1
+    )
 
     # Calculate accuracy
-    accuracy = accuracy_score(test_labels, predicted_labels)
+    accuracy = accuracy_score(
+        test_labels,
+        predicted_labels
+    )
 
     print("\nMODEL EVALUATION RESULTS")
     print("------------------------")
-    print(f"Accuracy: {accuracy * 100:.2f}%")
+    print(f"Test Accuracy: {accuracy * 100:.2f}%")
+    print(f"Test Error: {(1 - accuracy) * 100:.2f}%")
+    print(f"Test Images: {len(test_labels)}")
 
-    # Generate classification report
+    # Classification report
     report = classification_report(
         test_labels,
         predicted_labels,
         labels=list(range(num_classes)),
-        target_names=class_names,
+        target_names=CLASS_NAMES,
+        digits=4,
         zero_division=0
     )
 
     print("\nCLASSIFICATION REPORT")
+    print("---------------------")
     print(report)
 
-    # Save classification report
-    with open("classification_report.txt", "w") as file:
+    # Save report
+    with open(
+        "classification_report.txt",
+        "w"
+    ) as file:
         file.write(report)
 
-    # Generate confusion matrix
+    # Confusion matrix
     matrix = confusion_matrix(
         test_labels,
         predicted_labels,
@@ -120,9 +216,10 @@ def main():
     )
 
     print("\nCONFUSION MATRIX")
+    print("----------------")
     print(matrix)
 
-    # Save confusion matrix as CSV
+    # Save confusion matrix
     np.savetxt(
         "confusion_matrix.csv",
         matrix,
@@ -130,13 +227,13 @@ def main():
         fmt="%d"
     )
 
-    # Display confusion matrix
+    # Plot confusion matrix
     display = ConfusionMatrixDisplay(
         confusion_matrix=matrix,
-        display_labels=class_names
+        display_labels=CLASS_NAMES
     )
 
-    fig, ax = plt.subplots(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=(10, 8))
 
     display.plot(
         cmap="Blues",
@@ -148,16 +245,23 @@ def main():
     plt.title("Sign Language Gesture Recognition")
     plt.tight_layout()
 
-    # Save confusion matrix graph
-    plt.savefig("confusion_matrix.png", dpi=300)
+    plt.savefig(
+        "confusion_matrix.png",
+        dpi=300
+    )
 
     plt.show()
 
-    print("\nEvaluation files saved:")
+    print("\nEvaluation completed!")
+    print("Generated files:")
     print("1. classification_report.txt")
     print("2. confusion_matrix.csv")
     print("3. confusion_matrix.png")
 
+
+# -----------------------------
+# 5. RUN PROGRAM
+# -----------------------------
 
 if __name__ == "__main__":
     main()
